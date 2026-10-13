@@ -1,0 +1,5 @@
+github.com/ayayaakasvin/wpn v0.0.0-20260623151537-09f80ea4238b h1:PhnLYvt4VBcWRTZLFO5LLxUAvjYkWFFgVI2rCss/wx4=
+github.com/ayayaakasvin/wpn v0.0.0-20260623151537-09f80ea4238b/go.mod h1:JBZ1ohV+VpSYRs5mTFt3FBvADM4Xy5CB1qZaz+5QdWE=
+github.com/oklog/ulid/v2 v2.1.1 h1:suPZ4ARWLOJLegGFiZZ1dFAkqzhMjL3J1TzI+5wHz8s=
+github.com/oklog/ulid/v2 v2.1.1/go.mod h1:rcEKHmBBKfef9DhnvX7y1HZBYxjXb0cP5ExxNsTT1QQ=
+github.com/pborman/getopt v0.0.0-20170112200414-7148bc3a4c30/go.mod h1:85jBQOZwpVEaDAr341tbn15RS4fCAsIst0qp7i8ex1o=
