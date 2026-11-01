@@ -21,27 +21,15 @@ local network.
 ## Usage
 
 ```sh
-go run . --host 192.168.1.20 --pin 123456
+localsend-auto-download --host 192.168.1.20 --pin 123456
 ```
 
 Pass `--help` to see all available flags. For example, to choose a download
 directory and provide a session ID explicitly:
 
 ```sh
-go run . --host 192.168.1.20 --session-id 192.168.1.10 --base-path ./downloads
+localsend-auto-download --host 192.168.1.20 --session-id 192.168.1.10 --base-path ./downloads
 ```
-
-## Development
-
-Run the test suite and compile all packages with:
-
-```sh
-go test ./...
-go build ./...
-```
-
-GitHub Actions runs both commands on pushes, pull requests, and manual
-workflow dispatches.
 
 ## HTTPS considerations
 
