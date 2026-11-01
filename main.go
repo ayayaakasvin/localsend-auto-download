@@ -64,7 +64,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 					"job_id", result.JobID,
 					"worker_id", result.WorkerID,
 					"attempts", result.Attempts,
-					"duration", result.TimeConsumed,
+					"duration", result.TimeConsumed.String(),
 					"error", result.Error,
 				)
 				continue
@@ -75,7 +75,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 				"job_id", result.JobID,
 				"worker_id", result.WorkerID,
 				"attempts", result.Attempts,
-				"duration", result.TimeConsumed,
+				"duration", result.TimeConsumed.String(),
 			)
 		}
 		resultsDone <- downloadErrors

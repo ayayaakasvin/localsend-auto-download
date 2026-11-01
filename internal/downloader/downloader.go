@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,9 +18,11 @@ import (
 
 var _ domain.FileDownloader = &Downloader{}
 
-// Host -> SessionID -> FileID
-const v2DownloadLink = "http://%s:53317/api/localsend/v2/download?sessionId=%s&fileId=%s"
-const v2ListLink = "http://%s:53317/api/localsend/v2/prepare-download"
+const (
+	localsendPort         = "53317"
+	v2DownloadPath        = "/api/localsend/v2/download"
+	v2PrepareDownloadPath = "/api/localsend/v2/prepare-download"
+)
 
 type Downloader struct {
 	client *http.Client
@@ -27,6 +31,7 @@ type Downloader struct {
 
 	host      string // ip of Localsend host
 	sessionID string // ip address of device inside netword, can be speficied
+	pinCode   string // ilf localsend host requires pin
 
 	timeout     time.Duration // 10s default
 	idleTimeout time.Duration // 30s default
@@ -38,7 +43,7 @@ type Downloader struct {
 // basePath is the directory where the files will be downloaded
 // host for target, ip of device that hosting Localsend share link
 // sessionID for LocalSend is device ip inside network, if now specified will be fetched. e.g. wlanX inet <IP>
-func NewDownloader(basePath string, host, sessionID string, timeouts ...time.Duration) (*Downloader, error) {
+func NewDownloader(basePath string, slc *domain.ShareLinkConfig, timeoutCfg *domain.TimeoutConfig) (*Downloader, error) {
 	if basePath == "" {
 		exePath, err := os.Executable()
 		if err != nil {
@@ -55,11 +60,13 @@ func NewDownloader(basePath string, host, sessionID string, timeouts ...time.Dur
 
 	timeout := 10 * time.Second
 	idleTimeout := 30 * time.Second
-	if len(timeouts) > 0 && timeouts[0] > 0 {
-		timeout = timeouts[0]
-	}
-	if len(timeouts) > 1 && timeouts[1] > 0 {
-		idleTimeout = timeouts[1]
+	if timeoutCfg != nil {
+		if timeoutCfg.Timeout > 0 {
+			timeout = timeoutCfg.Timeout
+		}
+		if timeoutCfg.IdleTimeout > 0 {
+			idleTimeout = timeoutCfg.IdleTimeout
+		}
 	}
 
 	d := &Downloader{
@@ -73,12 +80,16 @@ func NewDownloader(basePath string, host, sessionID string, timeouts ...time.Dur
 		idleTimeout: idleTimeout,
 		basePath:    basePath,
 	}
-	if sessionID != "" {
-		d.sessionID = sessionID
+	if slc != nil {
+		d.host = slc.Host
+		d.sessionID = slc.SessionID
+		d.pinCode = slc.PinCode
+	}
+	if d.sessionID != "" {
 		return d, nil
 	}
 
-	if err := d.establishIPInsideNetwork(host); err != nil {
+	if err := d.establishIPInsideNetwork(d.host); err != nil {
 		return nil, err
 	}
 	return d, nil
@@ -98,7 +109,11 @@ func (d *Downloader) DownloadFile(ctx context.Context, file *domain.File) error 
 		return fmt.Errorf("filename is required")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf(v2DownloadLink, d.host, d.sessionID, file.ID), nil)
+	query := url.Values{
+		"sessionId": {d.sessionID},
+		"fileId":    {file.ID},
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.requestURL(v2DownloadPath, query), nil)
 	if err != nil {
 		return fmt.Errorf("create get request: %w", err)
 	}
@@ -139,7 +154,11 @@ func (d *Downloader) GetFileList(ctx context.Context) (*domain.FileMetadata, err
 		return nil, fmt.Errorf("base URL is required")
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf(v2ListLink, d.host), nil)
+	query := make(url.Values)
+	if d.pinCode != "" {
+		query.Set("pin", d.pinCode)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, d.requestURL(v2PrepareDownloadPath, query), nil)
 	if err != nil {
 		return nil, fmt.Errorf("create get request: %w", err)
 	}
@@ -161,6 +180,15 @@ func (d *Downloader) GetFileList(ctx context.Context) (*domain.FileMetadata, err
 	}
 
 	return files, nil
+}
+
+func (d *Downloader) requestURL(path string, query url.Values) string {
+	return (&url.URL{
+		Scheme:   "http",
+		Host:     net.JoinHostPort(d.host, localsendPort),
+		Path:     path,
+		RawQuery: query.Encode(),
+	}).String()
 }
 
 func (d *Downloader) resolvePath(name string) string {
